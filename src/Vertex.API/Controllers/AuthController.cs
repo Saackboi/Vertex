@@ -1,29 +1,26 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.IdentityModel.Tokens;
 using Vertex.Application.DTOs;
-using Vertex.Domain.Entities;
+using Vertex.Application.Interfaces;
 
 namespace Vertex.API.Controllers;
 
+/// <summary>
+/// Controlador de autenticación.
+/// Responsabilidad: Solo manejar requests/responses HTTP.
+/// La lógica de negocio está en AuthService.
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
-    private readonly UserManager<ApplicationUser> _userManager;
-    private readonly IConfiguration _configuration;
+    private readonly IAuthService _authService;
     private readonly ILogger<AuthController> _logger;
 
     public AuthController(
-        UserManager<ApplicationUser> userManager,
-        IConfiguration configuration,
+        IAuthService authService,
         ILogger<AuthController> logger)
     {
-        _userManager = userManager;
-        _configuration = configuration;
+        _authService = authService;
         _logger = logger;
     }
 
@@ -37,73 +34,16 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ApiResponse<AuthResponseDto>>> Register([FromBody] RegisterDto registerDto)
     {
-        try
+        // Delegar toda la lógica al servicio
+        var result = await _authService.RegisterAsync(registerDto);
+        
+        return result.StatusCode switch
         {
-            // Validar entrada
-            if (string.IsNullOrWhiteSpace(registerDto.Email) || 
-                string.IsNullOrWhiteSpace(registerDto.Password) ||
-                string.IsNullOrWhiteSpace(registerDto.FullName))
-            {
-                return BadRequest(ApiResponse<AuthResponseDto>.ErrorResponse(
-                    "Todos los campos son requeridos", 
-                    400));
-            }
-
-            // Verificar si el usuario ya existe
-            var existingUser = await _userManager.FindByEmailAsync(registerDto.Email);
-            if (existingUser != null)
-            {
-                return BadRequest(ApiResponse<AuthResponseDto>.ErrorResponse(
-                    "El email ya está registrado", 
-                    400));
-            }
-
-            // Crear nuevo usuario
-            var user = new ApplicationUser
-            {
-                UserName = registerDto.Email,
-                Email = registerDto.Email,
-                FullName = registerDto.FullName
-            };
-
-            var result = await _userManager.CreateAsync(user, registerDto.Password);
-
-            if (!result.Succeeded)
-            {
-                var errors = result.Errors.Select(e => e.Description).ToList();
-                return BadRequest(ApiResponse<AuthResponseDto>.ErrorResponse(
-                    "Error al crear el usuario", 
-                    400, 
-                    errors));
-            }
-
-            _logger.LogInformation("Usuario {Email} registrado exitosamente", registerDto.Email);
-
-            // Generar token JWT
-            var token = GenerateJwtToken(user);
-
-            var authResponse = new AuthResponseDto
-            {
-                Token = token,
-                Email = user.Email!,
-                FullName = user.FullName,
-                ExpiresAt = DateTime.UtcNow.AddMinutes(
-                    int.Parse(_configuration["JwtSettings:DurationInMinutes"]!))
-            };
-
-            return Ok(ApiResponse<AuthResponseDto>.SuccessResponse(
-                authResponse, 
-                "Usuario registrado exitosamente", 
-                201));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error durante el registro");
-            return StatusCode(500, ApiResponse<AuthResponseDto>.ErrorResponse(
-                "Error interno del servidor", 
-                500, 
-                new List<string> { ex.Message }));
-        }
+            201 => Created(string.Empty, result), // 201 Created
+            400 => BadRequest(result),
+            500 => StatusCode(500, result),
+            _ => StatusCode(result.StatusCode, result)
+        };
     }
 
     /// <summary>
@@ -116,98 +56,16 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<ApiResponse<AuthResponseDto>>> Login([FromBody] LoginDto loginDto)
     {
-        try
+        // Delegar toda la lógica al servicio
+        var result = await _authService.LoginAsync(loginDto);
+        
+        return result.StatusCode switch
         {
-            // Validar entrada
-            if (string.IsNullOrWhiteSpace(loginDto.Email) || 
-                string.IsNullOrWhiteSpace(loginDto.Password))
-            {
-                return BadRequest(ApiResponse<AuthResponseDto>.ErrorResponse(
-                    "Email y contraseña son requeridos", 
-                    400));
-            }
-
-            // Buscar usuario por email
-            var user = await _userManager.FindByEmailAsync(loginDto.Email);
-            if (user == null)
-            {
-                return Unauthorized(ApiResponse<AuthResponseDto>.ErrorResponse(
-                    "Credenciales inválidas", 
-                    401));
-            }
-
-            // Verificar contraseña
-            var isPasswordValid = await _userManager.CheckPasswordAsync(user, loginDto.Password);
-            if (!isPasswordValid)
-            {
-                _logger.LogWarning("Intento de login fallido para {Email}", loginDto.Email);
-                return Unauthorized(ApiResponse<AuthResponseDto>.ErrorResponse(
-                    "Credenciales inválidas", 
-                    401));
-            }
-
-            _logger.LogInformation("Usuario {Email} inició sesión exitosamente", loginDto.Email);
-
-            // Generar token JWT
-            var token = GenerateJwtToken(user);
-
-            var authResponse = new AuthResponseDto
-            {
-                Token = token,
-                Email = user.Email!,
-                FullName = user.FullName,
-                ExpiresAt = DateTime.UtcNow.AddMinutes(
-                    int.Parse(_configuration["JwtSettings:DurationInMinutes"]!))
-            };
-
-            return Ok(ApiResponse<AuthResponseDto>.SuccessResponse(
-                authResponse, 
-                "Login exitoso"));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error durante el login");
-            return StatusCode(500, ApiResponse<AuthResponseDto>.ErrorResponse(
-                "Error interno del servidor", 
-                500, 
-                new List<string> { ex.Message }));
-        }
-    }
-
-    /// <summary>
-    /// Genera un token JWT para el usuario autenticado
-    /// </summary>
-    /// <param name="user">Usuario autenticado</param>
-    /// <returns>Token JWT como string</returns>
-    private string GenerateJwtToken(ApplicationUser user)
-    {
-        var jwtSettings = _configuration.GetSection("JwtSettings");
-        var secretKey = jwtSettings["Key"];
-        var issuer = jwtSettings["Issuer"];
-        var audience = jwtSettings["Audience"];
-        var durationInMinutes = int.Parse(jwtSettings["DurationInMinutes"]!);
-
-        // Claims críticos del token
-        var claims = new[]
-        {
-            new Claim(ClaimTypes.NameIdentifier, user.Id), // ID del usuario (CRÍTICO)
-            new Claim(ClaimTypes.Email, user.Email!),
-            new Claim(ClaimTypes.Name, user.FullName),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()), // ID único del token
-            new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString()) // Issued at
+            200 => Ok(result),
+            400 => BadRequest(result),
+            401 => Unauthorized(result),
+            500 => StatusCode(500, result),
+            _ => StatusCode(result.StatusCode, result)
         };
-
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey!));
-        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-        var token = new JwtSecurityToken(
-            issuer: issuer,
-            audience: audience,
-            claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(durationInMinutes),
-            signingCredentials: credentials
-        );
-
-        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }

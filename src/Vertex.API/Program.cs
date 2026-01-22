@@ -4,9 +4,11 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Vertex.Application.Interfaces;
+using Vertex.Application.Services;
 using Vertex.Domain.Entities;
 using Vertex.Infrastructure.Data;
 using Vertex.Infrastructure.Repositories;
+using Vertex.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -65,6 +67,13 @@ builder.Services.AddAuthentication(options =>
 
 // Inyección de Dependencias: Repositorios
 builder.Services.AddScoped<IOnboardingRepository, OnboardingRepository>();
+
+// Inyección de Dependencias: Servicios de Infraestructura
+builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+
+// Inyección de Dependencias: Servicios de Aplicación
+builder.Services.AddScoped<IOnboardingService, OnboardingService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 
 // Configuración de Controladores
 builder.Services.AddControllers();
