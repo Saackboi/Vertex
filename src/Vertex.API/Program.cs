@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Vertex.API.Hubs;
+using Vertex.API.Services;
 using Vertex.Application.Interfaces;
 using Vertex.Application.Services;
 using Vertex.Domain.Entities;
@@ -63,6 +65,23 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey!)),
         ClockSkew = TimeSpan.Zero // Elimina el margen de 5 minutos por defecto
     };
+    
+    // Configuración para SignalR: leer el token desde query string
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+            
+            // Si la petición es hacia el hub de SignalR y hay token en query string
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        }
+    };
 });
 
 // Inyección de Dependencias: Unit of Work (Transacciones)
@@ -74,6 +93,7 @@ builder.Services.AddScoped<IProfessionalProfileRepository, ProfessionalProfileRe
 
 // Inyección de Dependencias: Servicios de Infraestructura
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+builder.Services.AddScoped<INotificationService, SignalRNotificationService>();
 
 // Inyección de Dependencias: Servicios de Aplicación
 builder.Services.AddScoped<IOnboardingService, OnboardingService>();
@@ -82,11 +102,14 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 // Configuración de Controladores
 builder.Services.AddControllers();
 
+// Configuración de SignalR
+builder.Services.AddSignalR();
+
 // Configuración de OpenAPI/Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Configuración de CORS (para conectar con frontend Angular)
+// Configuración de CORS (para conectar con frontend Angular + SignalR)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAngular", policy =>
@@ -98,7 +121,8 @@ builder.Services.AddCors(options =>
               )
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials();
+              .AllowCredentials()
+              .SetIsOriginAllowed(_ => true); // Necesario para WebSockets de SignalR
     });
 });
 
@@ -122,5 +146,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Mapear el Hub de SignalR (requiere autenticación)
+app.MapHub<NotificationHub>("/hubs/notifications");
 
 app.Run();

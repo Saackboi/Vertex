@@ -14,17 +14,20 @@ public class OnboardingService : IOnboardingService
     private readonly IOnboardingRepository _repository;
     private readonly IProfessionalProfileRepository _profileRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly INotificationService _notificationService;
     private readonly ILogger<OnboardingService> _logger;
 
     public OnboardingService(
         IOnboardingRepository repository,
         IProfessionalProfileRepository profileRepository,
         IUnitOfWork unitOfWork,
+        INotificationService notificationService,
         ILogger<OnboardingService> logger)
     {
         _repository = repository;
         _profileRepository = profileRepository;
         _unitOfWork = unitOfWork;
+        _notificationService = notificationService;
         _logger = logger;
     }
 
@@ -76,6 +79,12 @@ public class OnboardingService : IOnboardingService
             _logger.LogInformation(
                 "Progreso guardado para usuario {UserId}, paso {Step}",
                 userId,
+                dto.CurrentStep);
+
+            // 🔔 NOTIFICACIÓN EN TIEMPO REAL: Notificar al usuario sobre el progreso
+            await _notificationService.NotifyOnboardingProgressAsync(
+                userId,
+                $"Progreso guardado en el paso {dto.CurrentStep}",
                 dto.CurrentStep);
 
             return ApiResponse<OnboardingStatusDto>.SuccessResponse(
@@ -208,6 +217,16 @@ public class OnboardingService : IOnboardingService
                     400);
             }
 
+            // 5.1 VALIDAR QUE NO EXISTA YA UN PERFIL PROFESIONAL
+            var existingProfile = await _profileRepository.GetByUserIdAsync(userId);
+            if (existingProfile != null)
+            {
+                _logger.LogWarning("Intento de crear perfil duplicado para usuario {UserId}", userId);
+                return ApiResponse<ProfessionalProfileDto>.ErrorResponse(
+                    "Ya existe un perfil profesional para este usuario. No se puede completar el onboarding múltiples veces.",
+                    400);
+            }
+
             // 6. CREAR PERFIL PROFESIONAL CON RELACIONES
             var profile = new ProfessionalProfile
             {
@@ -257,12 +276,10 @@ public class OnboardingService : IOnboardingService
                 });
             }
 
-            // 10. GUARDAR TODO EN UNA TRANSACCIÓN EXPLÍCITA
-            // Garantiza atomicidad: o se guarda todo o no se guarda nada
+            // 10. GUARDAR (EF Core maneja transacciones automáticamente)
+            // Cada SaveChangesAsync() es una transacción completa
             try
             {
-                await _unitOfWork.BeginTransactionAsync();
-
                 // Guardar perfil profesional con todas sus relaciones
                 await _profileRepository.CreateAsync(profile);
 
@@ -271,22 +288,20 @@ public class OnboardingService : IOnboardingService
                 process.UpdatedAt = DateTime.UtcNow;
                 await _repository.SaveOrUpdateAsync(process);
 
-                // COMMIT: Ambas operaciones se confirman juntas
-                await _unitOfWork.CommitAsync();
-
                 _logger.LogInformation(
-                    "Transacción completada exitosamente. Perfil {ProfileId} creado para usuario {UserId}",
+                    "Onboarding completado exitosamente. Perfil {ProfileId} creado para usuario {UserId}",
                     profile.Id,
                     userId);
+
+                // 🔔 NOTIFICACIÓN EN TIEMPO REAL: Notificar completación del onboarding
+                await _notificationService.NotifyOnboardingCompletedAsync(userId, profile.Id.ToString());
             }
             catch (Exception ex)
             {
-                // ROLLBACK: Si algo falla, se deshacen todos los cambios
-                await _unitOfWork.RollbackAsync();
-                _logger.LogError(ex, "Error en transacción, rollback ejecutado para usuario {UserId}", userId);
+                _logger.LogError(ex, "Error al completar onboarding para usuario {UserId}", userId);
 
                 return ApiResponse<ProfessionalProfileDto>.ErrorResponse(
-                    "Error al completar el onboarding. No se guardaron cambios.",
+                    "Error al completar el onboarding",
                     500,
                     new List<string> { ex.Message });
             }
