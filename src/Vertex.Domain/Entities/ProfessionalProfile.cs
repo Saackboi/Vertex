@@ -3,6 +3,7 @@ namespace Vertex.Domain.Entities;
 /// <summary>
 /// Entidad que representa el perfil profesional final (CV) del usuario.
 /// Se genera una vez completado el proceso de onboarding.
+/// Modelo Relacional: Usa colecciones de navegación en lugar de JSON plano.
 /// </summary>
 public class ProfessionalProfile
 {
@@ -27,10 +28,19 @@ public class ProfessionalProfile
     public string Summary { get; set; } = string.Empty;
 
     /// <summary>
-    /// Habilidades del profesional serializadas en formato JSON
-    /// Ejemplo: ["C#", "SQL Server", "React"]
+    /// Colección de experiencias laborales (Relación 1:N)
     /// </summary>
-    public string SkillsJson { get; set; } = string.Empty;
+    public ICollection<WorkExperience> Experiences { get; set; } = new List<WorkExperience>();
+
+    /// <summary>
+    /// Colección de educación formal (Relación 1:N)
+    /// </summary>
+    public ICollection<Education> Educations { get; set; } = new List<Education>();
+
+    /// <summary>
+    /// Colección de habilidades técnicas y blandas (Relación 1:N)
+    /// </summary>
+    public ICollection<ProfileSkill> Skills { get; set; } = new List<ProfileSkill>();
 
     /// <summary>
     /// Fecha de creación del perfil

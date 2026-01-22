@@ -24,6 +24,21 @@ public class VertexDbContext : IdentityDbContext<ApplicationUser>
     /// </summary>
     public DbSet<ProfessionalProfile> ProfessionalProfiles { get; set; }
 
+    /// <summary>
+    /// Tabla de experiencias laborales
+    /// </summary>
+    public DbSet<WorkExperience> WorkExperiences { get; set; }
+
+    /// <summary>
+    /// Tabla de educación formal
+    /// </summary>
+    public DbSet<Education> Educations { get; set; }
+
+    /// <summary>
+    /// Tabla de habilidades profesionales
+    /// </summary>
+    public DbSet<ProfileSkill> ProfileSkills { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -73,9 +88,6 @@ public class VertexDbContext : IdentityDbContext<ApplicationUser>
             entity.Property(e => e.Summary)
                 .HasMaxLength(1000);
 
-            entity.Property(e => e.SkillsJson)
-                .HasColumnType("nvarchar(max)"); // JSON de habilidades
-
             entity.Property(e => e.CreatedAt)
                 .IsRequired();
 
@@ -84,6 +96,72 @@ public class VertexDbContext : IdentityDbContext<ApplicationUser>
 
             // Índice en UserId para búsquedas rápidas
             entity.HasIndex(e => e.UserId);
+
+            // Relaciones 1:N con cascada (borrar perfil elimina sus hijos)
+            entity.HasMany(p => p.Experiences)
+                .WithOne(e => e.ProfessionalProfile)
+                .HasForeignKey(e => e.ProfessionalProfileId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(p => p.Educations)
+                .WithOne(e => e.ProfessionalProfile)
+                .HasForeignKey(e => e.ProfessionalProfileId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(p => p.Skills)
+                .WithOne(s => s.ProfessionalProfile)
+                .HasForeignKey(s => s.ProfessionalProfileId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configuración de WorkExperience
+        modelBuilder.Entity<WorkExperience>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.CompanyName)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            entity.Property(e => e.Role)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(e => e.Description)
+                .HasMaxLength(1000);
+
+            entity.Property(e => e.StartDate)
+                .IsRequired();
+        });
+
+        // Configuración de Education
+        modelBuilder.Entity<Education>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Institution)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            entity.Property(e => e.Degree)
+                .IsRequired()
+                .HasMaxLength(150);
+
+            entity.Property(e => e.StartDate)
+                .IsRequired();
+        });
+
+        // Configuración de ProfileSkill
+        modelBuilder.Entity<ProfileSkill>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.SkillName)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(e => e.Level)
+                .HasMaxLength(50);
         });
     }
 }

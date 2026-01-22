@@ -21,4 +21,12 @@ public interface IOnboardingService
     /// <param name="userId">ID del usuario autenticado</param>
     /// <returns>Estado del onboarding o error si no existe</returns>
     Task<ApiResponse<OnboardingStatusDto>> GetProgressAsync(string userId);
+
+    /// <summary>
+    /// Finaliza el proceso de onboarding y convierte el JSON temporal en un ProfessionalProfile relacional.
+    /// REGLA DE NEGOCIO: Solo se puede completar si IsCompleted es false y hay datos válidos.
+    /// </summary>
+    /// <param name="userId">ID del usuario (extraído del JWT)</param>
+    /// <returns>Perfil profesional creado</returns>
+    Task<ApiResponse<ProfessionalProfileDto>> CompleteOnboardingAsync(string userId);
 }

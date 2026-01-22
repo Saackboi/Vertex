@@ -67,6 +67,7 @@ builder.Services.AddAuthentication(options =>
 
 // Inyección de Dependencias: Repositorios
 builder.Services.AddScoped<IOnboardingRepository, OnboardingRepository>();
+builder.Services.AddScoped<IProfessionalProfileRepository, ProfessionalProfileRepository>();
 
 // Inyección de Dependencias: Servicios de Infraestructura
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();

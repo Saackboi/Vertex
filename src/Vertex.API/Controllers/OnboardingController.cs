@@ -90,4 +90,41 @@ public class OnboardingController : ControllerBase
             _ => StatusCode(result.StatusCode, result)
         };
     }
+
+    /// <summary>
+    /// Endpoint POST para completar el proceso de onboarding.
+    /// ACCIÓN: Convierte el JSON temporal (SerializedData) en un ProfessionalProfile relacional.
+    /// SEGURIDAD: El UserId se extrae del token JWT, NO del request body.
+    /// </summary>
+    /// <returns>Perfil profesional creado</returns>
+    [HttpPost("complete")]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse<ProfessionalProfileDto>>> Complete()
+    {
+        // SEGURIDAD: Extraer UserId desde el token JWT
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        
+        if (string.IsNullOrEmpty(userId))
+        {
+            _logger.LogWarning("Intento de completar onboarding sin userId en token");
+            return Unauthorized(ApiResponse<ProfessionalProfileDto>.ErrorResponse(
+                "Usuario no autenticado", 
+                401));
+        }
+
+        // Delegar la lógica al servicio
+        var result = await _onboardingService.CompleteOnboardingAsync(userId);
+        
+        return result.StatusCode switch
+        {
+            201 => Created(string.Empty, result),
+            400 => BadRequest(result),
+            404 => NotFound(result),
+            500 => StatusCode(500, result),
+            _ => StatusCode(result.StatusCode, result)
+        };
+    }
 }
