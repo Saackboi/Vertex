@@ -33,7 +33,7 @@ public class OnboardingController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<OnboardingStatusDto>> SaveProgress([FromBody] SaveProgressDto dto)
+    public async Task<ActionResult<ApiResponse<OnboardingStatusDto>>> SaveProgress([FromBody] SaveProgressDto dto)
     {
         try
         {
@@ -43,7 +43,9 @@ public class OnboardingController : ControllerBase
             if (string.IsNullOrEmpty(userId))
             {
                 _logger.LogWarning("Intento de guardar progreso sin userId en token");
-                return Unauthorized("Usuario no autenticado");
+                return Unauthorized(ApiResponse<OnboardingStatusDto>.ErrorResponse(
+                    "Usuario no autenticado", 
+                    401));
             }
 
             // Mapear DTO a entidad de dominio
@@ -72,12 +74,17 @@ public class OnboardingController : ControllerBase
                 userId,
                 dto.CurrentStep);
 
-            return Ok(response);
+            return Ok(ApiResponse<OnboardingStatusDto>.SuccessResponse(
+                response, 
+                "Progreso guardado exitosamente"));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al guardar progreso del onboarding");
-            return StatusCode(500, new { message = "Error interno del servidor" });
+            return StatusCode(500, ApiResponse<OnboardingStatusDto>.ErrorResponse(
+                "Error interno del servidor", 
+                500, 
+                new List<string> { ex.Message }));
         }
     }
 
@@ -90,7 +97,7 @@ public class OnboardingController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<OnboardingStatusDto>> GetResume()
+    public async Task<ActionResult<ApiResponse<OnboardingStatusDto>>> GetResume()
     {
         try
         {
@@ -100,14 +107,18 @@ public class OnboardingController : ControllerBase
             if (string.IsNullOrEmpty(userId))
             {
                 _logger.LogWarning("Intento de recuperar progreso sin userId en token");
-                return Unauthorized("Usuario no autenticado");
+                return Unauthorized(ApiResponse<OnboardingStatusDto>.ErrorResponse(
+                    "Usuario no autenticado", 
+                    401));
             }
 
             var process = await _repository.GetByUserIdAsync(userId);
 
             if (process == null)
             {
-                return NotFound(new { message = "No se encontró un proceso de onboarding para este usuario" });
+                return NotFound(ApiResponse<OnboardingStatusDto>.ErrorResponse(
+                    "No se encontró un proceso de onboarding para este usuario", 
+                    404));
             }
 
             var response = new OnboardingStatusDto
@@ -120,12 +131,17 @@ public class OnboardingController : ControllerBase
 
             _logger.LogInformation("Progreso recuperado para usuario {UserId}", userId);
 
-            return Ok(response);
+            return Ok(ApiResponse<OnboardingStatusDto>.SuccessResponse(
+                response, 
+                "Progreso recuperado exitosamente"));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al recuperar estado del onboarding");
-            return StatusCode(500, new { message = "Error interno del servidor" });
+            return StatusCode(500, ApiResponse<OnboardingStatusDto>.ErrorResponse(
+                "Error interno del servidor", 
+                500, 
+                new List<string> { ex.Message }));
         }
     }
 }

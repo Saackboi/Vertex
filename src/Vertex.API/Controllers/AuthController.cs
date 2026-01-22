@@ -35,7 +35,7 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<AuthResponseDto>> Register([FromBody] RegisterDto registerDto)
+    public async Task<ActionResult<ApiResponse<AuthResponseDto>>> Register([FromBody] RegisterDto registerDto)
     {
         try
         {
@@ -44,14 +44,18 @@ public class AuthController : ControllerBase
                 string.IsNullOrWhiteSpace(registerDto.Password) ||
                 string.IsNullOrWhiteSpace(registerDto.FullName))
             {
-                return BadRequest(new { message = "Todos los campos son requeridos" });
+                return BadRequest(ApiResponse<AuthResponseDto>.ErrorResponse(
+                    "Todos los campos son requeridos", 
+                    400));
             }
 
             // Verificar si el usuario ya existe
             var existingUser = await _userManager.FindByEmailAsync(registerDto.Email);
             if (existingUser != null)
             {
-                return BadRequest(new { message = "El email ya está registrado" });
+                return BadRequest(ApiResponse<AuthResponseDto>.ErrorResponse(
+                    "El email ya está registrado", 
+                    400));
             }
 
             // Crear nuevo usuario
@@ -66,8 +70,11 @@ public class AuthController : ControllerBase
 
             if (!result.Succeeded)
             {
-                var errors = result.Errors.Select(e => e.Description);
-                return BadRequest(new { message = "Error al crear el usuario", errors });
+                var errors = result.Errors.Select(e => e.Description).ToList();
+                return BadRequest(ApiResponse<AuthResponseDto>.ErrorResponse(
+                    "Error al crear el usuario", 
+                    400, 
+                    errors));
             }
 
             _logger.LogInformation("Usuario {Email} registrado exitosamente", registerDto.Email);
@@ -75,19 +82,27 @@ public class AuthController : ControllerBase
             // Generar token JWT
             var token = GenerateJwtToken(user);
 
-            return Ok(new AuthResponseDto
+            var authResponse = new AuthResponseDto
             {
                 Token = token,
                 Email = user.Email!,
                 FullName = user.FullName,
                 ExpiresAt = DateTime.UtcNow.AddMinutes(
                     int.Parse(_configuration["JwtSettings:DurationInMinutes"]!))
-            });
+            };
+
+            return Ok(ApiResponse<AuthResponseDto>.SuccessResponse(
+                authResponse, 
+                "Usuario registrado exitosamente", 
+                201));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error durante el registro");
-            return StatusCode(500, new { message = "Error interno del servidor" });
+            return StatusCode(500, ApiResponse<AuthResponseDto>.ErrorResponse(
+                "Error interno del servidor", 
+                500, 
+                new List<string> { ex.Message }));
         }
     }
 
@@ -99,7 +114,7 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<AuthResponseDto>> Login([FromBody] LoginDto loginDto)
+    public async Task<ActionResult<ApiResponse<AuthResponseDto>>> Login([FromBody] LoginDto loginDto)
     {
         try
         {
@@ -107,14 +122,18 @@ public class AuthController : ControllerBase
             if (string.IsNullOrWhiteSpace(loginDto.Email) || 
                 string.IsNullOrWhiteSpace(loginDto.Password))
             {
-                return BadRequest(new { message = "Email y contraseña son requeridos" });
+                return BadRequest(ApiResponse<AuthResponseDto>.ErrorResponse(
+                    "Email y contraseña son requeridos", 
+                    400));
             }
 
             // Buscar usuario por email
             var user = await _userManager.FindByEmailAsync(loginDto.Email);
             if (user == null)
             {
-                return Unauthorized(new { message = "Credenciales inválidas" });
+                return Unauthorized(ApiResponse<AuthResponseDto>.ErrorResponse(
+                    "Credenciales inválidas", 
+                    401));
             }
 
             // Verificar contraseña
@@ -122,7 +141,9 @@ public class AuthController : ControllerBase
             if (!isPasswordValid)
             {
                 _logger.LogWarning("Intento de login fallido para {Email}", loginDto.Email);
-                return Unauthorized(new { message = "Credenciales inválidas" });
+                return Unauthorized(ApiResponse<AuthResponseDto>.ErrorResponse(
+                    "Credenciales inválidas", 
+                    401));
             }
 
             _logger.LogInformation("Usuario {Email} inició sesión exitosamente", loginDto.Email);
@@ -130,19 +151,26 @@ public class AuthController : ControllerBase
             // Generar token JWT
             var token = GenerateJwtToken(user);
 
-            return Ok(new AuthResponseDto
+            var authResponse = new AuthResponseDto
             {
                 Token = token,
                 Email = user.Email!,
                 FullName = user.FullName,
                 ExpiresAt = DateTime.UtcNow.AddMinutes(
                     int.Parse(_configuration["JwtSettings:DurationInMinutes"]!))
-            });
+            };
+
+            return Ok(ApiResponse<AuthResponseDto>.SuccessResponse(
+                authResponse, 
+                "Login exitoso"));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error durante el login");
-            return StatusCode(500, new { message = "Error interno del servidor" });
+            return StatusCode(500, ApiResponse<AuthResponseDto>.ErrorResponse(
+                "Error interno del servidor", 
+                500, 
+                new List<string> { ex.Message }));
         }
     }
 
