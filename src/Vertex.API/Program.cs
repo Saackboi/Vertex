@@ -65,6 +65,9 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+// Inyección de Dependencias: Unit of Work (Transacciones)
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+
 // Inyección de Dependencias: Repositorios
 builder.Services.AddScoped<IOnboardingRepository, OnboardingRepository>();
 builder.Services.AddScoped<IProfessionalProfileRepository, ProfessionalProfileRepository>();
@@ -83,12 +86,16 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Configuración de CORS (para conectar con frontend)
+// Configuración de CORS (para conectar con frontend Angular)
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowFrontend", policy =>
+    options.AddPolicy("AllowAngular", policy =>
     {
-        policy.WithOrigins("http://localhost:3000", "http://localhost:5173") // React/Vite
+        policy.WithOrigins(
+                "http://localhost:4200",      // Angular dev server
+                "http://localhost:3000",      // React (por si acaso)
+                "http://localhost:5173"       // Vite
+              )
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -107,8 +114,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// Aplicar política de CORS
-app.UseCors("AllowFrontend");
+// Aplicar política de CORS (ANTES de Authentication)
+app.UseCors("AllowAngular");
 
 // Middleware de autenticación y autorización
 app.UseAuthentication();

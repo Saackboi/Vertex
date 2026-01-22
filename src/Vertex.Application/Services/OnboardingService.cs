@@ -13,15 +13,18 @@ public class OnboardingService : IOnboardingService
 {
     private readonly IOnboardingRepository _repository;
     private readonly IProfessionalProfileRepository _profileRepository;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<OnboardingService> _logger;
 
     public OnboardingService(
         IOnboardingRepository repository,
         IProfessionalProfileRepository profileRepository,
+        IUnitOfWork unitOfWork,
         ILogger<OnboardingService> logger)
     {
         _repository = repository;
         _profileRepository = profileRepository;
+        _unitOfWork = unitOfWork;
         _logger = logger;
     }
 
@@ -254,15 +257,41 @@ public class OnboardingService : IOnboardingService
                 });
             }
 
-            // 10. GUARDAR EN TRANSACCIÓN (Perfil + Experiencias + Educación + Skills)
-            await _profileRepository.CreateAsync(profile);
+            // 10. GUARDAR TODO EN UNA TRANSACCIÓN EXPLÍCITA
+            // Garantiza atomicidad: o se guarda todo o no se guarda nada
+            try
+            {
+                await _unitOfWork.BeginTransactionAsync();
 
-            // 11. MARCAR ONBOARDING COMO COMPLETADO
-            process.IsCompleted = true;
-            process.UpdatedAt = DateTime.UtcNow;
-            await _repository.SaveOrUpdateAsync(process);
+                // Guardar perfil profesional con todas sus relaciones
+                await _profileRepository.CreateAsync(profile);
 
-            // 12. CONSTRUIR DTO DE RESPUESTA
+                // Marcar onboarding como completado
+                process.IsCompleted = true;
+                process.UpdatedAt = DateTime.UtcNow;
+                await _repository.SaveOrUpdateAsync(process);
+
+                // COMMIT: Ambas operaciones se confirman juntas
+                await _unitOfWork.CommitAsync();
+
+                _logger.LogInformation(
+                    "Transacción completada exitosamente. Perfil {ProfileId} creado para usuario {UserId}",
+                    profile.Id,
+                    userId);
+            }
+            catch (Exception ex)
+            {
+                // ROLLBACK: Si algo falla, se deshacen todos los cambios
+                await _unitOfWork.RollbackAsync();
+                _logger.LogError(ex, "Error en transacción, rollback ejecutado para usuario {UserId}", userId);
+
+                return ApiResponse<ProfessionalProfileDto>.ErrorResponse(
+                    "Error al completar el onboarding. No se guardaron cambios.",
+                    500,
+                    new List<string> { ex.Message });
+            }
+
+            // 11. CONSTRUIR DTO DE RESPUESTA
             var responseDto = new ProfessionalProfileDto
             {
                 Id = profile.Id,
@@ -275,11 +304,6 @@ public class OnboardingService : IOnboardingService
                 UpdatedAt = profile.UpdatedAt
             };
 
-            _logger.LogInformation(
-                "Onboarding completado exitosamente para usuario {UserId}. Perfil ID: {ProfileId}",
-                userId,
-                profile.Id);
-
             return ApiResponse<ProfessionalProfileDto>.SuccessResponse(
                 responseDto,
                 "Onboarding completado exitosamente. Tu perfil profesional ha sido creado.",
@@ -289,7 +313,7 @@ public class OnboardingService : IOnboardingService
         {
             _logger.LogError(ex, "Error crítico al completar onboarding para usuario {UserId}", userId);
             return ApiResponse<ProfessionalProfileDto>.ErrorResponse(
-                "Error al completar el onboarding",
+                "Error inesperado al procesar el onboarding",
                 500,
                 new List<string> { ex.Message });
         }
