@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Vertex.API/Vertex.API.csproj" />
+    <Project Path="src/Vertex.Application/Vertex.Application.csproj" />
+    <Project Path="src/Vertex.Domain/Vertex.Domain.csproj" />
+    <Project Path="src/Vertex.Infrastructure/Vertex.Infrastructure.csproj" />
+  </Folder>
+</Solution>
