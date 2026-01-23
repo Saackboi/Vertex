@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Vertex.Domain.Entities;
+using Vertex.Domain.ValueObjects;
 
 namespace Vertex.Infrastructure.Data;
 
@@ -52,9 +53,23 @@ public class VertexDbContext : IdentityDbContext<ApplicationUser>
                 .IsRequired()
                 .HasMaxLength(450); // Longitud estándar para IDs de Identity
 
-            entity.Property(e => e.SerializedData)
-                .IsRequired()
-                .HasColumnType("nvarchar(max)"); // Soporte para JSON largo en SQL Server
+            // Mapea la propiedad tipada Data como JSON en una columna nvarchar(max)
+            entity.OwnsOne(p => p.Data, b =>
+            {
+                b.ToJson();
+
+                // Colección de experiencias con su rango de fechas
+                b.OwnsMany(d => d.Experiences, eb =>
+                {
+                    eb.OwnsOne(e => e.DateRange);
+                });
+
+                // Colección de educación con su rango de fechas
+                b.OwnsMany(d => d.Educations, eb =>
+                {
+                    eb.OwnsOne(e => e.DateRange);
+                });
+            });
 
             entity.Property(e => e.CurrentStep)
                 .IsRequired()

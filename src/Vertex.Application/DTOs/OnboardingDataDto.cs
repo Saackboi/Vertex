@@ -1,44 +1,6 @@
 namespace Vertex.Application.DTOs;
 
 /// <summary>
-/// DTO temporal para deserializar el JSON de OnboardingProcess.SerializedData
-/// Este objeto representa la estructura completa del borrador del CV.
-/// </summary>
-public class OnboardingDataDto
-{
-    /// <summary>
-    /// Información personal del usuario
-    /// </summary>
-    public PersonalInfoDto? PersonalInfo { get; set; }
-
-    /// <summary>
-    /// Lista de experiencias laborales
-    /// </summary>
-    public List<WorkExperienceDto> Experiences { get; set; } = new();
-
-    /// <summary>
-    /// Lista de educación formal
-    /// </summary>
-    public List<EducationDto> Educations { get; set; } = new();
-
-    /// <summary>
-    /// Lista de habilidades
-    /// </summary>
-    public List<SkillDto> Skills { get; set; } = new();
-}
-
-/// <summary>
-/// Información personal del borrador
-/// </summary>
-public class PersonalInfoDto
-{
-    public string FullName { get; set; } = string.Empty;
-    public string Summary { get; set; } = string.Empty;
-    public string? Email { get; set; }
-    public string? Phone { get; set; }
-}
-
-/// <summary>
 /// DTO de experiencia laboral del JSON
 /// </summary>
 public class WorkExperienceDto
