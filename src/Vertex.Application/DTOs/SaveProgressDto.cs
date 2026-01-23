@@ -1,3 +1,4 @@
+using Vertex.Domain.ValueObjects;
 namespace Vertex.Application.DTOs;
 
 /// <summary>
@@ -13,9 +14,9 @@ public class SaveProgressDto
     public int CurrentStep { get; set; }
 
     /// <summary>
-    /// Datos del formulario en formato JSON
+    /// Datos del formulario tipados
     /// </summary>
-    public string SerializedData { get; set; } = string.Empty;
+    public OnboardingData Data { get; set; } = new();
 
     /// <summary>
     /// Indica si el usuario completó el último paso

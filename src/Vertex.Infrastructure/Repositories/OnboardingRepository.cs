@@ -41,7 +41,7 @@ public class OnboardingRepository : IOnboardingRepository
         {
             // ACTUALIZAR: Proceso existente
             existingProcess.CurrentStep = process.CurrentStep;
-            existingProcess.SerializedData = process.SerializedData;
+            existingProcess.Data = process.Data;
             existingProcess.IsCompleted = process.IsCompleted;
             existingProcess.UpdatedAt = DateTime.UtcNow;
 

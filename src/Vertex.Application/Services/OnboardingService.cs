@@ -1,8 +1,8 @@
-using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Vertex.Application.DTOs;
 using Vertex.Application.Interfaces;
 using Vertex.Domain.Entities;
+using Vertex.Domain.ValueObjects;
 
 namespace Vertex.Application.Services;
 
@@ -60,7 +60,7 @@ public class OnboardingService : IOnboardingService
             {
                 UserId = userId,
                 CurrentStep = dto.CurrentStep,
-                SerializedData = dto.SerializedData ?? string.Empty,
+                Data = dto.Data ?? new OnboardingData(),
                 IsCompleted = dto.IsCompleted
             };
 
@@ -71,7 +71,7 @@ public class OnboardingService : IOnboardingService
             var response = new OnboardingStatusDto
             {
                 CurrentStep = savedProcess.CurrentStep,
-                SerializedData = savedProcess.SerializedData,
+                Data = savedProcess.Data,
                 IsCompleted = savedProcess.IsCompleted,
                 UpdatedAt = savedProcess.UpdatedAt
             };
@@ -130,7 +130,7 @@ public class OnboardingService : IOnboardingService
             var response = new OnboardingStatusDto
             {
                 CurrentStep = process.CurrentStep,
-                SerializedData = process.SerializedData,
+                Data = process.Data,
                 IsCompleted = process.IsCompleted,
                 UpdatedAt = process.UpdatedAt
             };
@@ -187,30 +187,11 @@ public class OnboardingService : IOnboardingService
                     400);
             }
 
-            // 4. DESERIALIZAR JSON A DTO
-            OnboardingDataDto? onboardingData;
-            try
-            {
-                onboardingData = JsonSerializer.Deserialize<OnboardingDataDto>(
-                    process.SerializedData,
-                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-                if (onboardingData == null)
-                {
-                    throw new InvalidOperationException("El JSON deserializado es null");
-                }
-            }
-            catch (JsonException ex)
-            {
-                _logger.LogError(ex, "Error al deserializar JSON de onboarding para usuario {UserId}", userId);
-                return ApiResponse<ProfessionalProfileDto>.ErrorResponse(
-                    "Los datos del onboarding están en formato inválido",
-                    400,
-                    new List<string> { ex.Message });
-            }
+            // 4. USAR LOS DATOS TIPADOS DEL PROCESO
+            var data = process.Data;
 
             // 5. VALIDAR QUE HAYA DATOS MÍNIMOS
-            if (onboardingData.PersonalInfo == null || string.IsNullOrWhiteSpace(onboardingData.PersonalInfo.FullName))
+            if (string.IsNullOrWhiteSpace(data.FullName))
             {
                 return ApiResponse<ProfessionalProfileDto>.ErrorResponse(
                     "Debe completar al menos el nombre completo",
@@ -232,46 +213,46 @@ public class OnboardingService : IOnboardingService
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
-                FullName = onboardingData.PersonalInfo.FullName,
-                Summary = onboardingData.PersonalInfo.Summary ?? string.Empty,
+                FullName = data.FullName,
+                Summary = data.Summary ?? string.Empty,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
 
             // 7. MAPEAR EXPERIENCIAS LABORALES
-            foreach (var expDto in onboardingData.Experiences)
+            foreach (var exp in data.Experiences)
             {
                 profile.Experiences.Add(new WorkExperience
                 {
-                    CompanyName = expDto.CompanyName,
-                    Role = expDto.Role,
-                    StartDate = expDto.StartDate,
-                    EndDate = expDto.EndDate,
-                    Description = expDto.Description,
+                    CompanyName = exp.Company,
+                    Role = exp.Role,
+                    StartDate = exp.DateRange.Start,
+                    EndDate = exp.DateRange.End,
+                    Description = string.Empty,
                     ProfessionalProfileId = profile.Id
                 });
             }
 
             // 8. MAPEAR EDUCACIÓN
-            foreach (var eduDto in onboardingData.Educations)
+            foreach (var edu in data.Educations)
             {
                 profile.Educations.Add(new Education
                 {
-                    Institution = eduDto.Institution,
-                    Degree = eduDto.Degree,
-                    StartDate = eduDto.StartDate,
-                    GraduationDate = eduDto.GraduationDate,
+                    Institution = edu.Institution,
+                    Degree = edu.Degree,
+                    StartDate = edu.DateRange.Start,
+                    GraduationDate = edu.DateRange.End,
                     ProfessionalProfileId = profile.Id
                 });
             }
 
             // 9. MAPEAR HABILIDADES
-            foreach (var skillDto in onboardingData.Skills)
+            foreach (var skill in data.Skills)
             {
                 profile.Skills.Add(new ProfileSkill
                 {
-                    SkillName = skillDto.SkillName,
-                    Level = skillDto.Level,
+                    SkillName = skill,
+                    Level = null,
                     ProfessionalProfileId = profile.Id
                 });
             }
@@ -312,9 +293,26 @@ public class OnboardingService : IOnboardingService
                 Id = profile.Id,
                 FullName = profile.FullName,
                 Summary = profile.Summary,
-                Experiences = onboardingData.Experiences,
-                Educations = onboardingData.Educations,
-                Skills = onboardingData.Skills,
+                Experiences = data.Experiences.Select(e => new WorkExperienceDto
+                {
+                    CompanyName = e.Company,
+                    Role = e.Role,
+                    StartDate = e.DateRange.Start,
+                    EndDate = e.DateRange.End,
+                    Description = string.Empty
+                }).ToList(),
+                Educations = data.Educations.Select(e => new EducationDto
+                {
+                    Institution = e.Institution,
+                    Degree = e.Degree,
+                    StartDate = e.DateRange.Start,
+                    GraduationDate = e.DateRange.End
+                }).ToList(),
+                Skills = data.Skills.Select(s => new SkillDto
+                {
+                    SkillName = s,
+                    Level = null
+                }).ToList(),
                 CreatedAt = profile.CreatedAt,
                 UpdatedAt = profile.UpdatedAt
             };

@@ -1,3 +1,4 @@
+using Vertex.Domain.ValueObjects;
 namespace Vertex.Domain.Entities;
 
 /// <summary>
@@ -22,9 +23,9 @@ public class OnboardingProcess
     public int CurrentStep { get; set; } = 1;
 
     /// <summary>
-    /// Datos del formulario serializados en formato JSON
+    /// Datos del formulario tipados; EF Core los persiste como JSON
     /// </summary>
-    public string SerializedData { get; set; } = string.Empty;
+    public OnboardingData Data { get; set; }
 
     /// <summary>
     /// Fecha de última actualización del proceso
@@ -35,4 +36,9 @@ public class OnboardingProcess
     /// Indica si el proceso de onboarding ha sido completado
     /// </summary>
     public bool IsCompleted { get; set; } = false;
+
+    public OnboardingProcess()
+    {
+        Data = new OnboardingData();
+    }
 }

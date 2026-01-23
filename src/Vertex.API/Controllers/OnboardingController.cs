@@ -93,7 +93,7 @@ public class OnboardingController : ControllerBase
 
     /// <summary>
     /// Endpoint POST para completar el proceso de onboarding.
-    /// ACCIÓN: Convierte el JSON temporal (SerializedData) en un ProfessionalProfile relacional.
+    /// ACCIÓN: Convierte el objeto temporal de onboarding en un ProfessionalProfile relacional.
     /// SEGURIDAD: El UserId se extrae del token JWT, NO del request body.
     /// </summary>
     /// <returns>Perfil profesional creado</returns>
