@@ -58,17 +58,11 @@ public class VertexDbContext : IdentityDbContext<ApplicationUser>
             {
                 b.ToJson();
 
-                // Colección de experiencias con su rango de fechas
-                b.OwnsMany(d => d.Experiences, eb =>
-                {
-                    eb.OwnsOne(e => e.DateRange);
-                });
+                // Colección de experiencias (sin configuración adicional, EF mapea automáticamente)
+                b.OwnsMany(d => d.Experiences);
 
-                // Colección de educación con su rango de fechas
-                b.OwnsMany(d => d.Educations, eb =>
-                {
-                    eb.OwnsOne(e => e.DateRange);
-                });
+                // Colección de educación (sin configuración adicional, EF mapea automáticamente)
+                b.OwnsMany(d => d.Educations);
             });
 
             entity.Property(e => e.CurrentStep)

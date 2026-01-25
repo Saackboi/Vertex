@@ -226,9 +226,9 @@ public class OnboardingService : IOnboardingService
                 {
                     CompanyName = exp.Company,
                     Role = exp.Role,
-                    StartDate = exp.DateRange.Start,
-                    EndDate = exp.DateRange.End,
-                    Description = string.Empty,
+                    StartDate = exp.StartDate,
+                    EndDate = exp.EndDate,
+                    Description = exp.Description,
                     ProfessionalProfileId = profile.Id
                 });
             }
@@ -240,8 +240,8 @@ public class OnboardingService : IOnboardingService
                 {
                     Institution = edu.Institution,
                     Degree = edu.Degree,
-                    StartDate = edu.DateRange.Start,
-                    GraduationDate = edu.DateRange.End,
+                    StartDate = edu.StartDate,
+                    GraduationDate = edu.GraduationDate,
                     ProfessionalProfileId = profile.Id
                 });
             }
@@ -297,16 +297,16 @@ public class OnboardingService : IOnboardingService
                 {
                     CompanyName = e.Company,
                     Role = e.Role,
-                    StartDate = e.DateRange.Start,
-                    EndDate = e.DateRange.End,
-                    Description = string.Empty
+                    StartDate = e.StartDate,
+                    EndDate = e.EndDate,
+                    Description = e.Description
                 }).ToList(),
                 Educations = data.Educations.Select(e => new EducationDto
                 {
                     Institution = e.Institution,
                     Degree = e.Degree,
-                    StartDate = e.DateRange.Start,
-                    GraduationDate = e.DateRange.End
+                    StartDate = e.StartDate,
+                    GraduationDate = e.GraduationDate
                 }).ToList(),
                 Skills = data.Skills.Select(s => new SkillDto
                 {

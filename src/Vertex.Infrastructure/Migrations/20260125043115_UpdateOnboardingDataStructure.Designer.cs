@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Vertex.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using Vertex.Infrastructure.Data;
 namespace Vertex.Infrastructure.Migrations
 {
     [DbContext(typeof(VertexDbContext))]
-    partial class VertexDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260125043115_UpdateOnboardingDataStructure")]
+    partial class UpdateOnboardingDataStructure
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

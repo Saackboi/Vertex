@@ -15,18 +15,15 @@ public class WorkEntry
 {
     public string Company { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;
-    public DateRange DateRange { get; set; } = new();
+    public string Description { get; set; } = string.Empty;
+    public DateTime StartDate { get; set; }
+    public DateTime? EndDate { get; set; }
 }
 
 public class EducationEntry
 {
     public string Institution { get; set; } = string.Empty;
     public string Degree { get; set; } = string.Empty;
-    public DateRange DateRange { get; set; } = new();
-}
-
-public class DateRange
-{
-    public DateTime Start { get; set; }
-    public DateTime? End { get; set; }
+    public DateTime StartDate { get; set; }
+    public DateTime? GraduationDate { get; set; }
 }
