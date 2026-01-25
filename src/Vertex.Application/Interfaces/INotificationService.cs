@@ -7,6 +7,16 @@ namespace Vertex.Application.Interfaces;
 public interface INotificationService
 {
     /// <summary>
+    /// Envía una notificación personalizada a un usuario específico
+    /// </summary>
+    /// <param name="userId">ID del usuario destinatario</param>
+    /// <param name="title">Título de la notificación</param>
+    /// <param name="message">Mensaje descriptivo</param>
+    /// <param name="type">Tipo: "info", "success", "warning", "error"</param>
+    /// <param name="data">Datos adicionales opcionales en formato JSON</param>
+    Task SendNotificationAsync(string userId, string title, string message, string type = "info", string? data = null);
+
+    /// <summary>
     /// Notifica a un usuario específico sobre el progreso de su onboarding
     /// </summary>
     Task NotifyOnboardingProgressAsync(string userId, string message, int currentStep);

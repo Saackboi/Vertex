@@ -90,6 +90,7 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 // Inyección de Dependencias: Repositorios
 builder.Services.AddScoped<IOnboardingRepository, OnboardingRepository>();
 builder.Services.AddScoped<IProfessionalProfileRepository, ProfessionalProfileRepository>();
+builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 
 // Inyección de Dependencias: Servicios de Infraestructura
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();

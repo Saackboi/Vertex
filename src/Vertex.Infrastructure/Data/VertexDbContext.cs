@@ -40,6 +40,11 @@ public class VertexDbContext : IdentityDbContext<ApplicationUser>
     /// </summary>
     public DbSet<ProfileSkill> ProfileSkills { get; set; }
 
+    /// <summary>
+    /// Tabla de notificaciones en tiempo real persistentes
+    /// </summary>
+    public DbSet<Notification> Notifications { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -171,6 +176,47 @@ public class VertexDbContext : IdentityDbContext<ApplicationUser>
 
             entity.Property(e => e.Level)
                 .HasMaxLength(50);
+        });
+
+        // Configuración de Notification
+        modelBuilder.Entity<Notification>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.UserId)
+                .IsRequired()
+                .HasMaxLength(450);
+
+            entity.Property(e => e.Title)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            entity.Property(e => e.Message)
+                .IsRequired()
+                .HasMaxLength(1000);
+
+            entity.Property(e => e.Type)
+                .IsRequired()
+                .HasMaxLength(20)
+                .HasDefaultValue("info");
+
+            entity.Property(e => e.Read)
+                .IsRequired()
+                .HasDefaultValue(false);
+
+            entity.Property(e => e.Timestamp)
+                .IsRequired();
+
+            entity.Property(e => e.Data)
+                .HasMaxLength(4000); // JSON opcional con datos adicionales
+
+            // Índice para consultas rápidas por usuario y estado
+            entity.HasIndex(e => new { e.UserId, e.Read, e.Timestamp })
+                .HasDatabaseName("IX_Notifications_UserId_Read_Timestamp");
+
+            // Índice adicional solo por UserId para obtener todas las notificaciones del usuario
+            entity.HasIndex(e => e.UserId)
+                .HasDatabaseName("IX_Notifications_UserId");
         });
     }
 }

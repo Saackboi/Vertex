@@ -61,7 +61,7 @@ public class OnboardingService : IOnboardingService
                 UserId = userId,
                 CurrentStep = dto.CurrentStep,
                 Data = dto.Data ?? new OnboardingData(),
-                IsCompleted = dto.IsCompleted
+                IsCompleted = false // NUNCA se completa desde SaveProgress - solo desde CompleteOnboarding
             };
 
             // Guardar o actualizar en la base de datos

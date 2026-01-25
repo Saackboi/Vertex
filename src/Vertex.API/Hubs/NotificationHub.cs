@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using System.Security.Claims;
+using Vertex.Application.Interfaces;
 
 namespace Vertex.API.Hubs;
 
@@ -12,10 +13,14 @@ namespace Vertex.API.Hubs;
 public class NotificationHub : Hub
 {
     private readonly ILogger<NotificationHub> _logger;
+    private readonly INotificationRepository _notificationRepository;
 
-    public NotificationHub(ILogger<NotificationHub> logger)
+    public NotificationHub(
+        ILogger<NotificationHub> logger,
+        INotificationRepository notificationRepository)
     {
         _logger = logger;
+        _notificationRepository = notificationRepository;
     }
 
     /// <summary>
@@ -82,5 +87,65 @@ public class NotificationHub : Hub
     public async Task Ping()
     {
         await Clients.Caller.SendAsync("Pong", DateTime.UtcNow);
+    }
+
+    /// <summary>
+    /// Marca una notificación específica como leída
+    /// Invocable desde el cliente: await connection.invoke('MarkAsRead', notificationId)
+    /// </summary>
+    /// <param name="notificationId">ID de la notificación a marcar como leída</param>
+    public async Task MarkAsRead(string notificationId)
+    {
+        var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        
+        if (string.IsNullOrEmpty(userId))
+        {
+            _logger.LogWarning("Intento de marcar notificación como leída sin userId válido");
+            return;
+        }
+
+        if (!Guid.TryParse(notificationId, out var guid))
+        {
+            _logger.LogWarning("notificationId inválido: {NotificationId}", notificationId);
+            return;
+        }
+
+        // Actualizar en base de datos
+        var success = await _notificationRepository.MarkAsReadAsync(guid, userId);
+
+        if (success)
+        {
+            _logger.LogInformation("Usuario {UserId} marcó notificación {NotificationId} como leída", userId, notificationId);
+            
+            // Notificar al cliente que la notificación fue marcada como leída
+            await Clients.User(userId).SendAsync("NotificationRead", notificationId);
+        }
+        else
+        {
+            _logger.LogWarning("No se encontró la notificación {NotificationId} para el usuario {UserId}", notificationId, userId);
+        }
+    }
+
+    /// <summary>
+    /// Marca todas las notificaciones del usuario como leídas
+    /// Invocable desde el cliente: await connection.invoke('MarkAllAsRead')
+    /// </summary>
+    public async Task MarkAllAsRead()
+    {
+        var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        
+        if (string.IsNullOrEmpty(userId))
+        {
+            _logger.LogWarning("Intento de marcar todas las notificaciones como leídas sin userId válido");
+            return;
+        }
+
+        // Actualizar en base de datos
+        var count = await _notificationRepository.MarkAllAsReadAsync(userId);
+
+        _logger.LogInformation("Usuario {UserId} marcó {Count} notificaciones como leídas", userId, count);
+
+        // Notificar al cliente que todas las notificaciones fueron marcadas como leídas
+        await Clients.User(userId).SendAsync("AllNotificationsRead");
     }
 }

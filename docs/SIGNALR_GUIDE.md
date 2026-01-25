@@ -187,16 +187,20 @@ public class OnboardingService : IOnboardingService
 ### Del Servidor → Cliente
 | Evento | Datos | Descripción |
 |--------|-------|-------------|
-| `OnboardingProgress` | `{ Message, CurrentStep, Timestamp }` | Progreso del onboarding |
-| `OnboardingCompleted` | `{ Message, ProfileId, Timestamp }` | Onboarding completado |
-| `Notification` | `{ Message, Timestamp }` | Notificación general |
-| `GroupNotification` | `{ Message, GroupName, Timestamp }` | Notificación a grupo |
+| `OnboardingProgress` | `{ Id, UserId, Title, Message, Type, CurrentStep, Read, Timestamp }` | Progreso del onboarding |
+| `OnboardingCompleted` | `{ Id, UserId, Title, Message, Type, ProfileId, Read, Timestamp }` | Onboarding completado |
+| `Notification` | `{ Id, UserId, Title, Message, Type, Read, Timestamp, Data? }` | Notificación general personalizada |
+| `GroupNotification` | `{ Id, Title, Message, Type, GroupName, Read, Timestamp }` | Notificación a grupo |
+| `NotificationRead` | `notificationId: string` | Confirmación de notificación marcada como leída |
+| `AllNotificationsRead` | - | Confirmación de todas las notificaciones marcadas como leídas |
 | `Pong` | `DateTime` | Respuesta a Ping |
 
 ### Del Cliente → Servidor
 | Método | Parámetros | Descripción |
 |--------|-----------|-------------|
 | `Ping` | - | Test de conexión |
+| `MarkAsRead` | `notificationId: string` | Marcar una notificación como leída |
+| `MarkAllAsRead` | - | Marcar todas las notificaciones del usuario como leídas |
 | `JoinGroup` | `groupName: string` | Unirse a un grupo |
 | `LeaveGroup` | `groupName: string` | Salir de un grupo |
 

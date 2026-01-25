@@ -17,9 +17,4 @@ public class SaveProgressDto
     /// Datos del formulario tipados
     /// </summary>
     public OnboardingData Data { get; set; } = new();
-
-    /// <summary>
-    /// Indica si el usuario completó el último paso
-    /// </summary>
-    public bool IsCompleted { get; set; } = false;
 }
