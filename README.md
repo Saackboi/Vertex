@@ -354,4 +354,4 @@ Este proyecto es de uso educativo y profesional.
 
 ---
 
-Desarrollado con ❤️ siguiendo las mejores prácticas de .NET
+Desarrollado con Koji siguiendo las mejores prácticas de .NET
